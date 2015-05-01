@@ -1,0 +1,110 @@
+*************************************************************************
+EMAIL FROM SAS
+Author: Alex Arney
+Date created: 2015-03-18
+Last updated: 2015-04-27
+Description: This is a basic template to use SAS to send HTML formatted
+emails directly from SAS.
+*************************************************************************;
+
+/* Variable date for the report email example */
+data _null_;
+call symput( "rpt_mth", put(intnx('month', today(),-1),yymmn6.)) ;
+run;
+
+/*Email sender information*/
+%let name = Joe Bloggs;
+%let email = joe.bloggs@email.com;
+
+/*Email signature information (optional)*/
+%let role = "Breather";
+%let section = "Breathing Corp";
+%let address = "Level 1, Airville, Windland VA 20132";
+%let phone = "+61 (01) 1234 1234";
+%let ext = "ext: 12345";
+%let sig_email = "joe.bloggs@email.com";
+
+%mailer(signature=yes)
+%mailer(signature=no)
+
+/*Initialise email with basic header information (attachments/to/from/sender etc.) */
+filename mailer email 
+	to= ("&email.")
+	from="&email."
+	sender="&name. <&email.>" /*It is important to have both from and sender, as this field is used to mask the sending email with your name/email rather than the default SAS email address (which looks unprofessional)*/	
+	subject= "Breathing update for: &rpt_mth."
+	attach=	"c:\...filepath...\HowtoBreathe.xls"
+	content_type="text/html";
+
+/*Create the email body/content inside this data step -  this is just HTML with put commands, nothing too fancy.*/
+data _null_;
+file mailer;
+
+put '<html>';
+	put '<head>';
+		put '<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">';
+		put '<title>Updated Figures</title>';
+	put '</head>';
+	put '<body>';
+
+/*		Email Content/Text*/
+		put '<span style="font-size: 12pt;';
+			put 'font-family: &quot;Arial&quot;,&quot;sans-serif&quot;;">';
+			put 'Hello All';
+			put '<br><br>';
+			put 'Please find the updated breathing Report for ';
+			  put "&rpt_mth."; 
+			put 'attached in this email.';
+			put '<br><br>';
+			put 'Kind Regards';
+			put '<br><br>';
+			put "&name.";
+			put '<br><br>';
+		put '</span>';
+
+%if (&signature=yes) %then 
+	%do;
+	/*		Email Signature*/
+			put '<TABLE cellSpacing=0 cellPadding=0 width=100% border=0>';
+			  put '<TBODY>';
+			  put '<TR><TD><hr></TD></TR>';
+			  put '<TR><TD vAlign=top width="50%"><B><FONT face=Arial size=2>';
+			  put "&name.";
+			  put'</B></font>';
+			      put '<FONT face=Arial size=2 color= #888888>';
+			      put '&nbsp;|&nbsp;'; 
+				    put &role.;
+				  put '&nbsp;|&nbsp;'; 
+				    put &section.;
+				  put '</FONT><BR>';   
+			      put '<FONT face=Arial size=2 color= #888888>';
+				    put &address.;
+				  put '&nbsp;|&nbsp;'; 
+				    put &phone.; 
+				  put '&nbsp;|&nbsp;';
+			        put &ext.;
+				  put '&nbsp;|&nbsp;';
+				  put '<A href="mailto:';
+					put &sig_email.;
+				  put '">';
+					put &sig_email.;
+				  put '</A></FONT>';
+			   put '</TR>';
+			put '</TBODY>';
+			put '</TABLE>';
+
+		put '</body>';
+	put '</html>';
+	%end;
+
+%else 
+	%do;
+		put '</body>';
+	put '</html>';
+	%end;
+
+run;
+
+%mend mailer;
+
+%macro mailer(signature=yes);
